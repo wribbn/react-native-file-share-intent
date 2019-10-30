@@ -18,15 +18,13 @@ static NSExtensionContext* extContext;
 #define IMAGE_IDENTIFIER @"public.image"
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
-NSExtensionContext* extensionContext;
-
 RCT_EXPORT_MODULE();
 
 RCT_REMAP_METHOD(data,
                  resolver:(RCTPromiseResolveBlock)resolve
                  rejecter:(RCTPromiseRejectBlock)reject)
 {
-    [self extractDataFromContext: extensionContext withCallback:^(NSDictionary* dict, NSException* err) {
+    [self extractDataFromContext: extContext withCallback:^(NSDictionary* dict, NSException* err) {
         NSLog(@"react-native-share-extension dict: %@", dict);
         if(err) {
             reject(@"error", err.description, nil);

@@ -29,18 +29,18 @@ public class RNFileShareIntentModule extends ReactContextBaseJavaModule {
 
   protected void onNewIntent(Intent intent) {
     Activity mActivity = getCurrentActivity();
-    
+
     if(mActivity == null) { return; }
 
     mActivity.setIntent(intent);
-  }  
+  }
 
   @ReactMethod
-  public void getFilepath(Callback successCallback) {
+  public void data(Callback successCallback) {
     Activity mActivity = getCurrentActivity();
-    
+
     if(mActivity == null) { return; }
-    
+
     Intent intent = mActivity.getIntent();
     String action = intent.getAction();
     String type = intent.getType();
@@ -76,7 +76,7 @@ public class RNFileShareIntentModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void clearFilePath() {
     Activity mActivity = getCurrentActivity();
-    
+
     if(mActivity == null) { return; }
 
     Intent intent = mActivity.getIntent();

@@ -36,6 +36,11 @@ public class RNFileShareIntentModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void close() {
+    getCurrentActivity().finish();
+  }
+
+  @ReactMethod
   public void data(Callback successCallback) {
     Activity mActivity = getCurrentActivity();
 

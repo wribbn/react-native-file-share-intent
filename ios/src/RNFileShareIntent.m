@@ -15,7 +15,7 @@ static NSItemProvider* ShareFileIntentModule_itemProvider;
 static NSExtensionContext* extContext;
 
 #define URL_IDENTIFIER @"public.url"
-#define IMAGE_IDENTIFIER @"public.image"
+#define IMAGE_IDENTIFIER (NSString *)kUTTypeImage
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
 RCT_EXPORT_MODULE();
@@ -48,6 +48,8 @@ RCT_REMAP_METHOD(data,
                 urlProvider = provider;
             } else if ([provider hasItemConformingToTypeIdentifier:TEXT_IDENTIFIER]){
                 textProvider = provider;
+            } else if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]) {
+                imageProvider = provider;
             }
         }];
 
@@ -64,10 +66,24 @@ RCT_REMAP_METHOD(data,
         }
         if (imageProvider) {
             [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                NSURL *url = (NSURL *)item;
+                if (item) {
+                    NSURL *url = (NSURL *)item;
 
-                [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
+                    [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
+                } else if ([ShareFileIntentModule_itemProvider hasItemConformingToTypeIdentifier:(NSString *)kUTTypeImage]) {
+                    [ShareFileIntentModule_itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeImage options:nil completionHandler:^(NSURL *url, NSError *error) {
+
+                        if (url) {
+                            [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
+                        } else {
+                            [dict setObject:@"provider_failure" forKey:@"error"];
+                        }
+                    }];
+                } else {
+                    [dict setObject:@"provider_failure" forKey:@"error"];
+                }
             }];
+
             ok = true;
         }
         if (textProvider) {

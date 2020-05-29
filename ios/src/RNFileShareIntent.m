@@ -15,7 +15,8 @@ static NSItemProvider* ShareFileIntentModule_itemProvider;
 static NSExtensionContext* extContext;
 
 #define URL_IDENTIFIER @"public.url"
-#define IMAGE_IDENTIFIER (NSString *)kUTTypeImage
+#define PUBLIC_IMAGE_IDENTIFIER @"public.image"
+#define UTT_IMAGE_IDENTIFIER (NSString *)kUTTypeImage
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
 RCT_EXPORT_MODULE();
@@ -39,8 +40,11 @@ RCT_REMAP_METHOD(data,
         NSExtensionItem *item = [context.inputItems firstObject];
         NSArray *attachments = item.attachments;
 
+        NSLog(@"****** ATTACHMENTS ******: %@",attachments);
+
         __block NSItemProvider *urlProvider = nil;
-        __block NSItemProvider *imageProvider = nil;
+        __block NSItemProvider *publicImageProvider = nil;
+        __block NSItemProvider *uttImageProvider = nil;
         __block NSItemProvider *textProvider = nil;
 
         [attachments enumerateObjectsUsingBlock:^(NSItemProvider *provider, NSUInteger idx, BOOL *stop) {
@@ -48,8 +52,10 @@ RCT_REMAP_METHOD(data,
                 urlProvider = provider;
             } else if ([provider hasItemConformingToTypeIdentifier:TEXT_IDENTIFIER]){
                 textProvider = provider;
-            } else if ([provider hasItemConformingToTypeIdentifier:IMAGE_IDENTIFIER]) {
-                imageProvider = provider;
+            } else if ([provider hasItemConformingToTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER]) {
+                publicImageProvider = provider;
+            } else if ([provider hasItemConformingToTypeIdentifier:UTT_IMAGE_IDENTIFIER]) {
+                uttImageProvider = provider;
             }
         }];
 
@@ -60,12 +66,24 @@ RCT_REMAP_METHOD(data,
             [urlProvider loadItemForTypeIdentifier:URL_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
                 NSURL *url = (NSURL *)item;
 
+                NSLog(@"****** URL ******: %@", url);
+
                 [dict setObject:[url absoluteString] forKey:@"url"];
             }];
             ok = true;
         }
-        if (imageProvider) {
-            [imageProvider loadItemForTypeIdentifier:IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+        if (publicImageProvider) {
+            [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                NSURL *image = (NSURL *)item;
+
+                NSLog(@"****** IMAGE ******: %@", image);
+
+                // Don't set any keys on the dict for now (ignore/passthrough)
+            }];
+            ok = true;
+        }
+        if (uttImageProvider) {
+            [uttImageProvider loadItemForTypeIdentifier:UTT_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
                 if (item) {
                     NSURL *url = (NSURL *)item;
 
@@ -89,14 +107,14 @@ RCT_REMAP_METHOD(data,
         if (textProvider) {
             [textProvider loadItemForTypeIdentifier:TEXT_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
                 NSString *text = (NSString *)item;
-
+                NSLog(@"****** TEXT ******: %@", text);
                 [dict setObject:text forKey:@"text"];
             }];
             ok = true;
         }
 
         if (!callback) return;
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
             if (ok) {
                 if (callback) {
                     callback(dict, nil);

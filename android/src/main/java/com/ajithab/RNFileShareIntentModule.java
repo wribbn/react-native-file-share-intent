@@ -1,6 +1,9 @@
 
 package com.ajithab;
 
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
@@ -10,11 +13,14 @@ import com.ajithab.RNFileShareIntentPackage;
 
 import java.util.Map;
 import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Set;
 
 import android.widget.Toast;
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Bundle;
 
 
 public class RNFileShareIntentModule extends ReactContextBaseJavaModule {
@@ -41,41 +47,40 @@ public class RNFileShareIntentModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void data(Callback successCallback) {
-    Activity mActivity = getCurrentActivity();
+  public void data(Promise promise) {
+    promise.resolve(processIntent());
+  }
 
-    if(mActivity == null) { return; }
+  protected WritableMap processIntent() {
 
-    Intent intent = mActivity.getIntent();
-    String action = intent.getAction();
-    String type = intent.getType();
+      Activity currentActivity = getCurrentActivity();
 
-    if (Intent.ACTION_SEND.equals(action) && type != null) {
-      if ("text/plain".equals(type)) {
-        String input = intent.getStringExtra(Intent.EXTRA_TEXT);
-        successCallback.invoke(input);
-      } else if (type.startsWith("image/") || type.startsWith("video/") || type.startsWith("application/")) {
-        Uri fileUri = (Uri) intent.getParcelableExtra(Intent.EXTRA_STREAM);
-        if (fileUri != null) {
-          successCallback.invoke(fileUri.toString());
-        }
-      }else {
-        Toast.makeText(reactContext, "Type is not support", Toast.LENGTH_SHORT).show();
-      }
-    } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
-        if (type.startsWith("image/") || type.startsWith("video/") || type.startsWith("application/")) {
-          ArrayList<Uri> fileUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-          if (fileUris != null) {
-            String completeString = new String();
-            for (Uri uri: fileUris) {
-              completeString += uri.toString() + ",";
-            }
-            successCallback.invoke(completeString);
-          }
-        } else {
-          Toast.makeText(reactContext, "Type is not support", Toast.LENGTH_SHORT).show();
-        }
-    }
+      WritableMap map = Arguments.createMap();
+
+      Intent intent = currentActivity.getIntent();
+      String text = null;
+
+      // DEBUG: Uncomment to access a concatted list of intent extras in `str`
+      // Bundle bundle = intent.getExtras();
+      // StringBuilder str = new StringBuilder();
+      //
+      // if (bundle != null) {
+      //     Set<String> keys = bundle.keySet();
+      //     Iterator<String> it = keys.iterator();
+      //     while (it.hasNext()) {
+      //         String key = it.next();
+      //         str.append(key);
+      //         str.append(":");
+      //         str.append(bundle.get(key));
+      //         str.append("\n\r");
+      //     }
+      // }
+
+      text = intent.getStringExtra(Intent.EXTRA_TEXT);
+
+      map.putString("text", text);
+
+      return map;
   }
 
   @ReactMethod

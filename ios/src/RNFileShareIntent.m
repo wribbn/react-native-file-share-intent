@@ -64,19 +64,19 @@ RCT_REMAP_METHOD(data,
 
                         NSLog(@"****** PUBLIC IMAGE ******: %@", image);
 
-                        NSData *dataFromFile = [NSData dataWithContentsOfFile:image.path options: 0 error: &error];
+//                        NSData *dataFromFile = [NSData dataWithContentsOfFile:image.path options: 0 error: &error];
 
-                        if (dataFromFile == nil) {
-                           NSLog(@"Failed to read file, error %@", error);
-                        } else {
+//                        if (dataFromFile == nil) {
+//                           NSLog(@"Failed to read file, error %@", error);
+//                        } else {
                             __block NSMutableDictionary* imageData = [[NSMutableDictionary alloc] init];
-                            NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
+//                            NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
 
                             [imageData setObject:[image absoluteString] forKey:@"filePath"];
-                            [imageData setObject:base64String forKey:@"base64"];
+//                            [imageData setObject:base64String forKey:@"base64"];
 
                             [images addObject:imageData];
-                        }
+//                        }
 
                         ok = true;
                 }];
@@ -240,7 +240,18 @@ RCT_EXPORT_METHOD(close)
     [ extContext completeRequestReturningItems: @[] completionHandler: nil ];
 }
 
+RCT_EXPORT_METHOD(getBase64StringFromFilePath:(NSString *)imagePath resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSURL *imageUrl = [NSURL URLWithString:[imagePath stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+    NSData *dataFromFile = [NSData dataWithContentsOfFile:imageUrl.path];
+    NSString *base64String = nil;
 
+    if (dataFromFile == nil) {
+        resolve(@[[NSNull null], base64String]);
+    } else {
+        NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
+        resolve(@[[NSNull null], base64String]);
+    }
+}
 
 
 

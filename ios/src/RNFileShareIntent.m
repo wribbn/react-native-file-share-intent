@@ -16,6 +16,7 @@ static NSExtensionContext* extContext;
 
 #define URL_IDENTIFIER @"public.url"
 #define PUBLIC_IMAGE_IDENTIFIER @"public.image"
+#define JPEG_IMAGE_IDENTIFIER @"public.jpeg"
 #define UTT_IMAGE_IDENTIFIER (NSString *)kUTTypeImage
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
 
@@ -39,6 +40,7 @@ RCT_REMAP_METHOD(data,
     @try {
         NSExtensionItem *item = [context.inputItems firstObject];
         NSArray *attachments = item.attachments;
+        NSMutableArray *images = [NSMutableArray array];
 
         NSLog(@"****** ATTACHMENTS ******: %@",attachments);
 
@@ -46,6 +48,8 @@ RCT_REMAP_METHOD(data,
         __block NSItemProvider *publicImageProvider = nil;
         __block NSItemProvider *uttImageProvider = nil;
         __block NSItemProvider *textProvider = nil;
+        __block NSMutableDictionary* dict = [[NSMutableDictionary alloc] init];
+        __block BOOL ok = false;
 
         [attachments enumerateObjectsUsingBlock:^(NSItemProvider *provider, NSUInteger idx, BOOL *stop) {
             if([provider hasItemConformingToTypeIdentifier:URL_IDENTIFIER]) {
@@ -54,13 +58,53 @@ RCT_REMAP_METHOD(data,
                 textProvider = provider;
             } else if ([provider hasItemConformingToTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER]) {
                 publicImageProvider = provider;
+
+                [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                        NSURL *image = (NSURL *)item;
+
+                        NSLog(@"****** PUBLIC IMAGE ******: %@", image);
+
+                        NSData *dataFromFile = [NSData dataWithContentsOfFile:image.path options: 0 error: &error];
+
+                        if (dataFromFile == nil) {
+                           NSLog(@"Failed to read file, error %@", error);
+                        } else {
+                            __block NSMutableDictionary* imageData = [[NSMutableDictionary alloc] init];
+                            NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
+
+                            [imageData setObject:[image absoluteString] forKey:@"filePath"];
+                            [imageData setObject:base64String forKey:@"base64"];
+
+                            [images addObject:imageData];
+                        }
+
+                        ok = true;
+                }];
             } else if ([provider hasItemConformingToTypeIdentifier:UTT_IMAGE_IDENTIFIER]) {
                 uttImageProvider = provider;
+
+                [uttImageProvider loadItemForTypeIdentifier:UTT_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                    if (item) {
+                        NSURL *url = (NSURL *)item;
+
+                        [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
+                    } else if ([ShareFileIntentModule_itemProvider hasItemConformingToTypeIdentifier:(NSString *)kUTTypeImage]) {
+                        [ShareFileIntentModule_itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeImage options:nil completionHandler:^(NSURL *url, NSError *error) {
+
+                            if (url) {
+                                [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
+                            } else {
+                                [dict setObject:@"provider_failure" forKey:@"error"];
+                            }
+                        }];
+                    } else {
+                        [dict setObject:@"provider_failure" forKey:@"error"];
+                    }
+                }];
+
+                ok = true;
             }
         }];
-
-        __block NSMutableDictionary* dict = [[NSMutableDictionary alloc] init];
-        __block BOOL ok = false;
 
         if(urlProvider) {
             [urlProvider loadItemForTypeIdentifier:URL_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
@@ -72,38 +116,6 @@ RCT_REMAP_METHOD(data,
             }];
             ok = true;
         }
-        if (publicImageProvider) {
-            [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                NSURL *image = (NSURL *)item;
-
-                NSLog(@"****** IMAGE ******: %@", image);
-
-                // Don't set any keys on the dict for now (ignore/passthrough)
-            }];
-            ok = true;
-        }
-        if (uttImageProvider) {
-            [uttImageProvider loadItemForTypeIdentifier:UTT_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                if (item) {
-                    NSURL *url = (NSURL *)item;
-
-                    [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
-                } else if ([ShareFileIntentModule_itemProvider hasItemConformingToTypeIdentifier:(NSString *)kUTTypeImage]) {
-                    [ShareFileIntentModule_itemProvider loadItemForTypeIdentifier:(NSString *)kUTTypeImage options:nil completionHandler:^(NSURL *url, NSError *error) {
-
-                        if (url) {
-                            [dict setObject:[url absoluteString] forKey:[[[url absoluteString] pathExtension] lowercaseString]];
-                        } else {
-                            [dict setObject:@"provider_failure" forKey:@"error"];
-                        }
-                    }];
-                } else {
-                    [dict setObject:@"provider_failure" forKey:@"error"];
-                }
-            }];
-
-            ok = true;
-        }
         if (textProvider) {
             [textProvider loadItemForTypeIdentifier:TEXT_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
                 NSString *text = (NSString *)item;
@@ -111,6 +123,10 @@ RCT_REMAP_METHOD(data,
                 [dict setObject:text forKey:@"text"];
             }];
             ok = true;
+        }
+
+        if (sizeof images) {
+          [dict setObject:images forKey:@"images"];
         }
 
         if (!callback) return;

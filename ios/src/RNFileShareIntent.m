@@ -59,26 +59,22 @@ RCT_REMAP_METHOD(data,
             } else if ([provider hasItemConformingToTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER]) {
                 publicImageProvider = provider;
 
-                [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                        NSURL *image = (NSURL *)item;
+            [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
+                    NSURL *imageUrl = (NSURL *)item;
+                    NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
+                    UIImage *image = [UIImage imageWithData:imageData];
+                    NSNumber *width = [NSNumber numberWithFloat:image.size.width];
+                    NSNumber *height = [NSNumber numberWithFloat:image.size.height];
 
-                        NSLog(@"****** PUBLIC IMAGE ******: %@", image);
+                    __block NSMutableDictionary* response = [[NSMutableDictionary alloc] init];
 
-//                        NSData *dataFromFile = [NSData dataWithContentsOfFile:image.path options: 0 error: &error];
+                    [response setObject:[imageUrl absoluteString] forKey:@"filePath"];
+                    [response setObject:width forKey:@"width"];
+                    [response setObject:height forKey:@"height"];
 
-//                        if (dataFromFile == nil) {
-//                           NSLog(@"Failed to read file, error %@", error);
-//                        } else {
-                            __block NSMutableDictionary* imageData = [[NSMutableDictionary alloc] init];
-//                            NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
+                    [images addObject:response];
 
-                            [imageData setObject:[image absoluteString] forKey:@"filePath"];
-//                            [imageData setObject:base64String forKey:@"base64"];
-
-                            [images addObject:imageData];
-//                        }
-
-                        ok = true;
+                    ok = true;
                 }];
             } else if ([provider hasItemConformingToTypeIdentifier:UTT_IMAGE_IDENTIFIER]) {
                 uttImageProvider = provider;

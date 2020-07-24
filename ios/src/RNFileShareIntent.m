@@ -121,9 +121,7 @@ RCT_REMAP_METHOD(data,
             ok = true;
         }
 
-        if (sizeof images) {
-          [dict setObject:images forKey:@"images"];
-        }
+        [dict setObject:images forKey:@"images"];
 
         if (!callback) return;
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2.0 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{

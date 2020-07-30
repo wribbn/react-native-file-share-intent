@@ -36,6 +36,17 @@ RCT_REMAP_METHOD(data,
     }];
 }
 
+- (UIImage *)resizeImageWithNewWidth:(UIImage *)image newWidth:(CGFloat)nwidth {
+    float scale = nwidth / image.size.width;
+    float newHeight = image.size.height * scale;
+    UIGraphicsBeginImageContext(CGSizeMake(nwidth, newHeight));
+    [image drawInRect:CGRectMake(0, 0, nwidth, newHeight)];
+    UIImage *nImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+
+    return nImage;
+}
+
 - (void)extractDataFromContext:(NSExtensionContext *)context withCallback:(void(^)(NSDictionary* dict, NSException *exception)) callback {
     @try {
         NSExtensionItem *item = [context.inputItems firstObject];
@@ -234,16 +245,31 @@ RCT_EXPORT_METHOD(close)
     [ extContext completeRequestReturningItems: @[] completionHandler: nil ];
 }
 
+- (NSString *)encodeToBase64String:(UIImage *)image {
+    return [UIImageJPEGRepresentation(image, 0.6) base64EncodedStringWithOptions:NSDataBase64Encoding64CharacterLineLength];
+}
+
 RCT_EXPORT_METHOD(getBase64StringFromFilePath:(NSString *)imagePath resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
     NSURL *imageUrl = [NSURL URLWithString:[imagePath stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
-    NSData *dataFromFile = [NSData dataWithContentsOfFile:imageUrl.path];
+    NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
+    UIImage *raw = [UIImage imageWithData:imageData];
+    UIImage *image = [self resizeImageWithNewWidth:raw newWidth:900];
+    NSNumber *width = [NSNumber numberWithFloat:image.size.width];
+    NSNumber *height = [NSNumber numberWithFloat:image.size.height];
     NSString *base64String = nil;
 
-    if (dataFromFile == nil) {
-        resolve(@[[NSNull null], base64String]);
-    } else {
-        NSString *base64String = [dataFromFile base64EncodedStringWithOptions:0];
-        resolve(@[[NSNull null], base64String]);
+    __block NSMutableDictionary* response = [[NSMutableDictionary alloc] init];
+
+    @try {
+        base64String = [self encodeToBase64String:image];
+
+        [response setObject:(NSString *)base64String forKey:@"src"];
+        [response setObject:(NSNumber *)width forKey:@"width"];
+        [response setObject:(NSNumber *)height forKey:@"height"];
+        resolve(response);
+    } @catch (NSException* err) {
+        NSLog(@"Error: %@", err.description);
+        resolve(response);
     }
 }
 

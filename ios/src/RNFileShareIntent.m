@@ -16,6 +16,7 @@ static NSExtensionContext* extContext;
 
 #define URL_IDENTIFIER @"public.url"
 #define PUBLIC_IMAGE_IDENTIFIER @"public.image"
+#define PUBLIC_TEXT_IDENTIFIER @"public.plain-text"
 #define JPEG_IMAGE_IDENTIFIER @"public.jpeg"
 #define UTT_IMAGE_IDENTIFIER (NSString *)kUTTypeImage
 #define TEXT_IDENTIFIER (NSString *)kUTTypePlainText
@@ -53,7 +54,14 @@ RCT_REMAP_METHOD(data,
         NSArray *attachments = item.attachments;
         NSMutableArray *images = [NSMutableArray array];
 
-        NSLog(@"****** ATTACHMENTS ******: %@",attachments);
+        // DEBUG:
+//        for (NSItemProvider *provider in attachments) {
+//            NSArray *types = provider.registeredTypeIdentifiers;
+//
+//            for (NSString *type in types) {
+//                NSLog(@"type: %@", type);
+//            }
+//        }
 
         __block NSItemProvider *urlProvider = nil;
         __block NSItemProvider *publicImageProvider = nil;
@@ -67,13 +75,29 @@ RCT_REMAP_METHOD(data,
                 urlProvider = provider;
             } else if ([provider hasItemConformingToTypeIdentifier:TEXT_IDENTIFIER]){
                 textProvider = provider;
+            } else if ([provider hasItemConformingToTypeIdentifier:PUBLIC_TEXT_IDENTIFIER]){
+                textProvider = provider;
             } else if ([provider hasItemConformingToTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER]) {
                 publicImageProvider = provider;
-
             [publicImageProvider loadItemForTypeIdentifier:PUBLIC_IMAGE_IDENTIFIER options:nil completionHandler:^(id<NSSecureCoding> item, NSError *error) {
-                    NSURL *imageUrl = (NSURL *)item;
-                    NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
-                    UIImage *image = [UIImage imageWithData:imageData];
+                    NSURL *imageTest = (NSURL *)item;
+                    NSString *className = NSStringFromClass([imageTest class]);
+                    NSString *imageClass = @"UIImage";
+                    NSURL *imageUrl;
+                    UIImage *image;
+
+                    if ([className isEqualToString:imageClass]) {
+                        NSURL *tmpDirURL = [NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES];
+                        imageUrl = [[tmpDirURL URLByAppendingPathComponent:@"pkm"] URLByAppendingPathExtension:@"jpg"];
+                        NSString *imageUrlString = (NSString *)[imageUrl absoluteString];
+                        image = (UIImage *)item;
+                        [UIImageJPEGRepresentation(image, 0.6) writeToFile:imageUrlString atomically:YES];
+                    } else {
+                        imageUrl = (NSURL *)item;
+                        NSData *imageData = [NSData dataWithContentsOfURL:imageUrl];
+                        image = [UIImage imageWithData:imageData];
+                    }
+
                     NSNumber *width = [NSNumber numberWithFloat:image.size.width];
                     NSNumber *height = [NSNumber numberWithFloat:image.size.height];
 
